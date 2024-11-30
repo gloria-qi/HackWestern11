@@ -10,9 +10,8 @@ class DatabaseManager:
             self.cursor = self.conn.cursor()
         except Exception as e:
             print(e)
-            self.connection = None
+            self.conn = None
             self.cursor = None
-
 
     def create_tables(self):
         """Create necessary database tables if they don't exist."""
@@ -41,6 +40,7 @@ class DatabaseManager:
         # Grocery lists table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS grocery_lists (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT,
                 item TEXT,
                 quantity REAL,
@@ -48,7 +48,24 @@ class DatabaseManager:
                 FOREIGN KEY(username) REFERENCES users(username)
             )
         ''')
-        
+
+        # Purchase tracking table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS purchase_tracking (
+                match_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                item TEXT,
+                buyer TEXT,
+                total_price REAL,
+                is_purchased BOOLEAN DEFAULT 0,
+                user1 TEXT,
+                user2 TEXT,
+                user1_share REAL,
+                user2_share REAL,
+                FOREIGN KEY(user1) REFERENCES users(username),
+                FOREIGN KEY(user2) REFERENCES users(username)
+            )
+        ''')
+
         self.conn.commit()
 
     def register_user(self, username: str, hashed_password: str, email: str) -> bool:
@@ -132,18 +149,117 @@ class DatabaseManager:
     def close_connection(self):
         """Close database connection."""
         self.conn.close()
-        
+
     def remove_friend(self, username, friend_username):
+        """Remove a friend connection between two users."""
         cursor = self.conn.cursor()
         query = "DELETE FROM friends WHERE user1 = ? AND user2 = ?"
         cursor.execute(query, (username, friend_username))
         self.conn.commit()
         return True
+
     def get_grocery_items(self, username):
+        """Retrieve grocery list for a user."""
         query = "SELECT item, quantity, unit FROM grocery_lists WHERE username = ?"
         self.cursor.execute(query, (username,))
         return self.cursor.fetchall()
+
     def remove_grocery_item(self, username, item):
+        """Remove an item from the user's grocery list."""
         query = "DELETE FROM grocery_lists WHERE username = ? AND item = ?"
         self.cursor.execute(query, (username, item))
         self.conn.commit()
+
+    def track_matched_item_purchase(self, item, user1, user2, buyer=None):
+        """Track a matched item for potential purchase."""
+        cursor = self.conn.cursor()
+        
+        # First, check if this match already exists
+        cursor.execute('''
+            SELECT match_id FROM purchase_tracking 
+            WHERE item = ? AND 
+            ((user1 = ? AND user2 = ?) OR (user1 = ? AND user2 = ?))
+        ''', (item, user1, user2, user2, user1))
+        
+        existing_match = cursor.fetchone()
+        if existing_match:
+            # Update existing match
+            match_id = existing_match[0]
+            cursor.execute('''
+                UPDATE purchase_tracking 
+                SET buyer = ?, is_purchased = 0, total_price = NULL 
+                WHERE match_id = ?
+            ''', (buyer, match_id))
+        else:
+            # Create new match tracking
+            cursor.execute('''
+                INSERT INTO purchase_tracking 
+                (item, user1, user2, buyer, is_purchased) 
+                VALUES (?, ?, ?, ?, 0)
+            ''', (item, user1, user2, buyer))
+            match_id = cursor.lastrowid
+        
+        self.conn.commit()
+        return match_id
+
+    def complete_item_purchase(self, match_id, total_price):
+        """Complete the purchase and record the total price."""
+        cursor = self.conn.cursor()
+        
+        # Retrieve match details
+        cursor.execute('''
+            SELECT item, user1, user2, buyer 
+            FROM purchase_tracking 
+            WHERE match_id = ?
+        ''', (match_id,))
+        
+        match_details = cursor.fetchone()
+        if not match_details:
+            raise ValueError("Invalid match ID")
+        
+        item, user1, user2, buyer = match_details
+        
+        # Determine users involved in the purchase
+        if buyer == user1:
+            other_user = user2
+        else:
+            other_user = user1
+        
+        # Basic split: equal halves
+        user1_share = total_price / 2
+        user2_share = total_price / 2
+        
+        # Update the purchase tracking
+        cursor.execute('''
+            UPDATE purchase_tracking
+            SET is_purchased = 1, 
+                total_price = ?, 
+                user1_share = ?, 
+                user2_share = ?
+            WHERE match_id = ?
+        ''', (total_price, user1_share, user2_share, match_id))
+        
+        self.conn.commit()
+        
+        return {
+            'item': item,
+            'buyer': buyer,
+            'total_price': total_price,
+            'user1': user1,
+            'user2': user2,
+            'user1_share': user1_share,
+            'user2_share': user2_share
+        }
+
+    def get_purchase_history(self, username):
+        """Retrieve purchase history for a user."""
+        cursor = self.conn.cursor()
+        
+        cursor.execute('''
+            SELECT item, buyer, total_price, user1_share, user2_share
+            FROM purchase_tracking
+            WHERE (user1 = ? OR user2 = ?) AND is_purchased = 1
+        ''', (username, username))
+        
+        return cursor.fetchall()
+

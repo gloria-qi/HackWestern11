@@ -1,31 +1,12 @@
 import streamlit as st
 from models import User
 from database import DatabaseManager
-from streamlit_lottie import st_lottie
-import requests
-from database import DatabaseManager
+
 
 class GroceryShareApp:
     def __init__(self):
         """Initialize the application with database manager"""
         self.db = DatabaseManager("friends.db")
-        
-    def main():
-        db = DatabaseManager("friends.db")
-
-        db.conn.execute("INSERT OR IGNORE INTO friends (user1, user2) VALUES ('user1', 'friend1')")
-        db.conn.commit()
-
-        print("Before removing:", db.conn.execute("SELECT * FROM friends").fetchall())
-
-        db.remove_friend("user1", "friend1")
-        print("After removing:", db.conn.execute("SELECT * FROM friends").fetchall())
-
-        db.close_connection()
-
-    if __name__ == "__main__":
-        main()
-        
         
     def apply_custom_styling(self):
         st.markdown("""
@@ -71,8 +52,7 @@ class GroceryShareApp:
         }
         </style>
         """, unsafe_allow_html=True)
-
-
+        
     def run(self):
         st.set_page_config(page_title="GroceryShare", page_icon="🛒")
         if 'page' not in st.session_state:
@@ -89,50 +69,10 @@ class GroceryShareApp:
 
     def render_login_page(self):
         self.apply_custom_styling()
-        st.markdown(
-        """
-        <style>
-        .stApp {
-            background: linear-gradient(to bottom, #1c1c1c, #333333);
-            color: white;
-        }
-        .stSidebar {
-            background-color: #262626;
-        }
-        h1, h2, h3 {
-            color: #F39C12;
-        }
-        img {
-            border-radius: 15px;
-            box-shadow: 2px 2px 15px rgba(0, 0, 0, 0.5);
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-        st.markdown(
-    """
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-    <style>
-    .stApp {
-        background: linear-gradient(to bottom, #1c1c1c, #333333);
-        font-family: 'Poppins', sans-serif;
-        color: white;
-    }
-    h1, h2, h3 {
-        color: #F39C12;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-        st.markdown("<h1 style='text-align: center; color: white;'>Welcome to GroceryShare 🛒</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align: center;'>Welcome to GroceryShare 🛒</h1>", unsafe_allow_html=True)
     
         auth_mode = st.radio('Choose Action', ['Login', 'Register'])
-        col1, col2 = st.columns([1, 2])
-
-
+        
         if auth_mode == 'Login':
             st.subheader("🔑 Login")
             username = st.text_input('👤 Username', placeholder="Enter your username")
@@ -165,70 +105,7 @@ class GroceryShareApp:
                         st.session_state.page = 'login'
                     else:
                         st.error('Username or email already exists')
-                        
-    def render_grocery_list_page(self):
-        st.markdown("""
-        <div style='background-color: #262626; 
-                    padding: 20px; 
-                    border-radius: 15px; 
-                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
-            <h3 style='color: #F39C12; text-align: center;'>
-                🛒 Manage Your Grocery List
-            </h3>
-        </div>
-        """, unsafe_allow_html=True)
 
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            item = st.text_input('Item Name', placeholder="Enter item name")
-        
-        with col2:
-            quantity = st.number_input('Quantity', 
-                                    min_value=0.0, 
-                                    step=0.1, 
-                                    format="%.2f")
-        with col3:
-            unit = st.selectbox('Unit', 
-                                ['kg', 'lbs', 'pieces', 'pack', 'box', 'bottle'],
-                                index=0)
-        col_space1, col_button, col_space2 = st.columns([1,2,1])
-        
-        with col_button:
-            if st.button('Add Item', use_container_width=True):
-                if item and quantity > 0:
-                    self.db.add_grocery_item(st.session_state.username, item, quantity, unit)
-                    st.success(f'Added {round(quantity, 1)} {unit} of {item} to your list')
-                    #write to file to remember
-                else:
-                    st.warning('Please enter a valid item and quantity')
-                st.header('Your Grocery List')
-                grocery_items = self.db.get_grocery_items(st.session_state.username)
-
-        st.header('Your Grocery List')
-        grocery_items = self.db.get_grocery_items(st.session_state.username) 
-        if grocery_items:
-            st.write("Here are the items you’ve added:")
-            for index, (item, quantity, unit) in enumerate(grocery_items):
-                col1, col2, col3, col4 = st.columns([2, 2, 1, 1])
-                with col1:
-                    st.write(f"**{item}**")
-                with col2:
-                    st.write(f"{round(quantity, 1)} {unit}")
-                with col3:
-                    if st.button(f"📝 Edit", key=f"edit_{index}"):
-                        st.warning("Edit functionality not implemented yet!")  
-                with col4:
-                    if st.button(f"❌ Remove", key=f"remove_{index}"):
-                        self.db.remove_grocery_item(st.session_state.username, item)
-                        st.success(f"Removed {item} from your grocery list.")
-                        try:
-                            st.rerun()
-                        except AttributeError:
-                            st.session_state.page = st.session_state.page
-        else:
-            st.info("No items in your grocery list. Start adding some!")
-                    
     def render_dashboard(self):
         st.markdown("""
         <style>
@@ -252,6 +129,7 @@ class GroceryShareApp:
         }
         </style>
         """, unsafe_allow_html=True)
+
         st.sidebar.markdown(f"""
         <div class="dashboard-sidebar">
             <h2 style="color: #F39C12; text-align: center;">
@@ -260,6 +138,7 @@ class GroceryShareApp:
             <hr style="border-color: #F39C12;">
         </div>
         """, unsafe_allow_html=True)
+
         nav_options = [
             '🛒 Grocery List', 
             '👥 Friends', 
@@ -287,7 +166,7 @@ class GroceryShareApp:
         tab = st.sidebar.radio('Dashboard Navigation', 
                                 nav_options, 
                                 label_visibility='collapsed')
-        st.sidebar.markdown("<hr>", unsafe_allow_html=True)
+
         if st.sidebar.button('🚪 Logout', 
                             use_container_width=True, 
                             help='Exit your GroceryShare session'):
@@ -297,27 +176,59 @@ class GroceryShareApp:
             st.experimental_rerun()
 
         # Render appropriate page based on navigation
-        if '🛒 Grocery List' in tab:
+        if tab == '🛒 Grocery List':
             self.render_grocery_list_page()
-        elif '👥 Friends' in tab:
+        elif tab == '👥 Friends':
             self.render_friends_page()
-        elif '🔗 Matches' in tab:
+        elif tab == '🔗 Matches':
             self.render_matches_page()
 
-        # Optional: Add a welcome message or dashboard summary
-        st.markdown(f"""
+    def render_grocery_list_page(self):
+        st.markdown("""
         <div style='background-color: #262626; 
-                    padding: 15px; 
-                    border-radius: 10px; 
-                    margin-top: 20px;
-                    text-align: center;'>
-            <h3 style='color: #F39C12;'>Welcome to Your GroceryShare Dashboard</h3>
-            <p>Hello, {st.session_state.username}! 
-            Manage your groceries, connect with friends, and find matching items.</p>
+                    padding: 20px; 
+                    border-radius: 15px; 
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
+            <h3 style='color: #F39C12; text-align: center;'>
+                🛒 Manage Your Grocery List
+            </h3>
         </div>
         """, unsafe_allow_html=True)
 
-    def render_friends_page(self):   
+        item = st.text_input('Item Name', placeholder="Enter item name")
+        quantity = st.number_input('Quantity', min_value=0.0, step=0.1, format="%.2f")
+        unit = st.selectbox('Unit', ['kg', 'lbs', 'pieces', 'pack', 'box', 'bottle'])
+
+        if st.button('Add Item'):
+            if item and quantity > 0:
+                self.db.add_grocery_item(st.session_state.username, item, quantity, unit)
+                st.success(f'Added {round(quantity, 1)} {unit} of {item} to your list')
+            else:
+                st.warning('Please enter a valid item and quantity')
+
+        st.header('Your Grocery List')
+        grocery_items = self.db.get_grocery_items(st.session_state.username) 
+        if grocery_items:
+            st.write("Here are the items you’ve added:")
+            for index, (item, quantity, unit) in enumerate(grocery_items):
+                col1, col2, col3, col4 = st.columns([2, 2, 1, 1])
+                with col1:
+                    st.write(f"**{item}**")
+                with col2:
+                    st.write(f"{round(quantity, 1)} {unit}")
+                with col3:
+                    if st.button(f"📝 Edit", key=f"edit_{index}"):
+                        st.warning("Edit functionality not implemented yet!")  
+                with col4:
+                    if st.button(f"❌ Remove", key=f"remove_{index}"):
+                        self.db.remove_grocery_item(st.session_state.username, item)
+                        st.success(f"Removed {item} from your grocery list.")
+                        st.session_state.page = st.session_state.page
+                        st.experimental_rerun()
+        else:
+            st.info("No items in your grocery list. Start adding some!")
+
+    def render_friends_page(self):
         st.markdown("""
             <style>
             input, button {
@@ -339,8 +250,10 @@ class GroceryShareApp:
             button:hover {
                 background-color: #F39C12; 
                 color: black; 
+            }
             </style>
         """, unsafe_allow_html=True)
+        
         st.header('🤝 Friends Management')
         
         # Styled friend addition section
@@ -355,10 +268,9 @@ class GroceryShareApp:
         </div>
         """, unsafe_allow_html=True)
         
-        friend_username = st.text_input('Enter Friend\'s Username', 
-                                        placeholder="Username to add")
+        friend_username = st.text_input('Enter Friend\'s Username', placeholder="Username to add")
         
-        col_space, col_button, col_space2 = st.columns([1,2,1])
+        col_space, col_button, col_space2 = st.columns([1, 2, 1])
         
         with col_button:
             if st.button('Add Friend', use_container_width=True):
@@ -369,16 +281,19 @@ class GroceryShareApp:
                 else:
                     if self.db.add_friend(st.session_state.username, friend_username):
                         st.success(f'{friend_username} added to your friends')
+                        # Use rerun logic to refresh the page and show changes
+                        st.session_state.page = 'friends'
+                        st.experimental_rerun()
                     else:
                         st.error('Could not add friend. Check the username exists.')
 
         # Friends List with Card-like Display
         st.subheader('Your Friends')
         friends = self.db.get_friends(st.session_state.username)
-    
+
         if friends:
             for friend in friends:
-                
+                # Create card-like display for each friend
                 st.markdown(f"""
                 <div style='background-color: #3a3a3a; 
                             padding: 10px; 
@@ -389,14 +304,15 @@ class GroceryShareApp:
                             align-items: center;'>
                     <span>{friend}</span>
                     <button style='background-color: #F39C12; 
-                                color: black; 
-                                border: none; 
-                                padding: 5px 10px; 
-                                border-radius: 5px;'>
+                                    color: black; 
+                                    border: none; 
+                                    padding: 5px 10px; 
+                                    border-radius: 5px;'>
                         View Profile
                     </button>
                 </div>
                 """, unsafe_allow_html=True)
+            
             for index, friend in enumerate(friends):
                 col1, col2 = st.columns([4, 1])
                 with col1:
@@ -405,41 +321,45 @@ class GroceryShareApp:
                     if st.button(f"❌ Remove {friend}", key=f"remove_{index}_{friend}"):
                         self.db.remove_friend(st.session_state.username, friend)
                         st.success(f"{friend} has been removed.")
-                        try:
-                            st.rerun()
-                        except AttributeError:
-                            st.session_state.page = st.session_state.page
+                        # Refresh page and show updated list
+                        st.session_state.page = 'friends'
+                        st.experimental_rerun()
         else:
             st.info("You have no friends added yet. Start connecting!")
-            
+
 
     def render_matches_page(self):
-        st.header('🤝 Grocery Matches')
+        st.header('🔗 Grocery Matches with Friends')
         
-        matches = self.db.find_matching_groceries(st.session_state.username)
-
-        if matches:
-            for friend, items in matches.items():
-                st.markdown(f"""
-                <div style='background-color: #262626; 
-                            padding: 15px; 
-                            border-radius: 10px; 
-                            margin-bottom: 15px;
-                            box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
-                    <h4 style='color: #F39C12; margin-bottom: 10px;'>
-                        Matches with {friend}
-                    </h4>
-                    {''.join([f"""
-                    <div style='background-color: #3a3a3a; 
-                                padding: 10px; 
-                                border-radius: 8px; 
-                                margin-bottom: 5px;'>
-                        <strong>{item['item']}</strong>: 
-                        You want {item['user_quantity']} {item['unit']}, 
-                        {friend} wants {item['friend_quantity']} {item['unit']}
-                    </div>
-                    """ for item in items])}
-                </div>
-                """, unsafe_allow_html=True)
+        # Fetch the user's grocery items
+        user_grocery_items = self.db.get_grocery_items(st.session_state.username)
+        
+        if not user_grocery_items:
+            st.info("You have no items in your grocery list to match with friends.")
+            return
+        
+        # Show the user's grocery items
+        st.subheader('Your Grocery Items')
+        for item, quantity, unit in user_grocery_items:
+            st.write(f"{item} - {round(quantity, 1)} {unit}")
+        
+        # Fetch friends' grocery items and compare
+        matches_found = False
+        friends = self.db.get_friends(st.session_state.username)
+        
+        if friends:
+            st.subheader('Matching Grocery Items with Your Friends')
+            for friend in friends:
+                friend_items = self.db.get_grocery_items(friend)
+                
+                for item, quantity, unit in user_grocery_items:
+                    # Check if the friend has the same item
+                    for friend_item, friend_quantity, friend_unit in friend_items:
+                        if item == friend_item and unit == friend_unit:
+                            matches_found = True
+                            st.write(f"🟢 Match with {friend}: {item} - You need {round(quantity, 1)} {unit}, {friend} needs {round(friend_quantity, 1)} {unit}")
+                    
+        if not matches_found:
+            st.info("No matches found with your friends' grocery lists.")
         else:
-            st.info('No matching grocery items found among your friends')
+            st.write("These are the matches based on your grocery lists. You can now reach out to your friends and plan together.")
