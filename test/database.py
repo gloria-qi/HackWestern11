@@ -143,3 +143,7 @@ class DatabaseManager:
         query = "SELECT item, quantity, unit FROM grocery_lists WHERE username = ?"
         self.cursor.execute(query, (username,))
         return self.cursor.fetchall()
+    def remove_grocery_item(self, username, item):
+        query = "DELETE FROM grocery_lists WHERE username = ? AND item = ?"
+        self.cursor.execute(query, (username, item))
+        self.conn.commit()

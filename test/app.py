@@ -214,16 +214,18 @@ class GroceryShareApp:
                 with col1:
                     st.write(f"**{item}**")
                 with col2:
-                    st.write(f"{quantity} {unit}")
+                    st.write(f"{round(quantity, 1)} {unit}")
                 with col3:
-                    #Need to work on this
                     if st.button(f"📝 Edit", key=f"edit_{index}"):
                         st.warning("Edit functionality not implemented yet!")  
                 with col4:
                     if st.button(f"❌ Remove", key=f"remove_{index}"):
-                        self.db.remove_grocery_item(st.session_state.username, item)  
+                        self.db.remove_grocery_item(st.session_state.username, item)
                         st.success(f"Removed {item} from your grocery list.")
-                        st.experimental_rerun() 
+                        try:
+                            st.rerun()
+                        except AttributeError:
+                            st.session_state.page = st.session_state.page
         else:
             st.info("No items in your grocery list. Start adding some!")
                     
@@ -406,7 +408,6 @@ class GroceryShareApp:
                         try:
                             st.rerun()
                         except AttributeError:
-
                             st.session_state.page = st.session_state.page
         else:
             st.info("You have no friends added yet. Start connecting!")
