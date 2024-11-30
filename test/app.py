@@ -57,14 +57,11 @@ class GroceryShareApp:
 
     def run(self):
         st.set_page_config(page_title="GroceryShare", page_icon="🛒")
-        # Initialize session state variables
         if 'page' not in st.session_state:
             st.session_state.page = 'login'
         if 'logged_in' not in st.session_state:
             st.session_state.logged_in = False
             st.session_state.username = None
-
-        # Page routing logic
         if st.session_state.page == 'login':
             self.render_login_page()
         elif st.session_state.logged_in:
@@ -173,13 +170,10 @@ class GroceryShareApp:
                                     min_value=0.0, 
                                     step=0.1, 
                                     format="%.2f")
-        
         with col3:
             unit = st.selectbox('Unit', 
                                 ['kg', 'lbs', 'pieces', 'pack', 'box', 'bottle'],
                                 index=0)
-
-        # Enhanced Add Item Button with columns for better alignment
         col_space1, col_button, col_space2 = st.columns([1,2,1])
         
         with col_button:
@@ -191,7 +185,6 @@ class GroceryShareApp:
                     st.warning('Please enter a valid item and quantity')
                     
     def render_dashboard(self):
-        # Custom styling for dashboard
         st.markdown("""
         <style>
         .dashboard-sidebar {
@@ -214,8 +207,6 @@ class GroceryShareApp:
         }
         </style>
         """, unsafe_allow_html=True)
-
-        # Custom sidebar layout
         st.sidebar.markdown(f"""
         <div class="dashboard-sidebar">
             <h2 style="color: #F39C12; text-align: center;">
@@ -224,15 +215,11 @@ class GroceryShareApp:
             <hr style="border-color: #F39C12;">
         </div>
         """, unsafe_allow_html=True)
-
-        # Navigation with icons and better styling
         nav_options = [
             '🛒 Grocery List', 
             '👥 Friends', 
             '🔗 Matches'
         ]
-        
-        # Create custom radio button with better styling
         nav_style = """
         <style>
         div[role="radiogroup"] > label {
@@ -252,13 +239,9 @@ class GroceryShareApp:
         </style>
         """
         st.sidebar.markdown(nav_style, unsafe_allow_html=True)
-        
-        # Navigation radio with custom layout
         tab = st.sidebar.radio('Dashboard Navigation', 
                                 nav_options, 
                                 label_visibility='collapsed')
-
-        # Logout button with styling
         st.sidebar.markdown("<hr>", unsafe_allow_html=True)
         if st.sidebar.button('🚪 Logout', 
                             use_container_width=True, 
