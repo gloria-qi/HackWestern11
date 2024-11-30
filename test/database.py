@@ -4,8 +4,14 @@ from typing import List, Dict
 class DatabaseManager:
     def __init__(self, db_path: str = 'grocery_share.db'):
         """Initialize database connection"""
-        self.conn = sqlite3.connect(db_path, check_same_thread=False)
-        self.create_tables()
+        try:
+            self.conn = sqlite3.connect(db_path, check_same_thread=False)
+            self.create_tables()
+        except Exception as e:
+            print(e)
+            self.connection = None
+            self.cursor = None
+
 
     def create_tables(self):
         """Create necessary database tables if they don't exist."""
@@ -125,3 +131,10 @@ class DatabaseManager:
     def close_connection(self):
         """Close database connection."""
         self.conn.close()
+        
+    def remove_friend(self, username, friend_username):
+        cursor = self.conn.cursor()
+        query = "DELETE FROM friends WHERE user1 = ? AND user2 = ?"
+        cursor.execute(query, (username, friend_username))
+        self.conn.commit()
+        return True

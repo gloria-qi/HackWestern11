@@ -3,11 +3,29 @@ from models import User
 from database import DatabaseManager
 from streamlit_lottie import st_lottie
 import requests
+from database import DatabaseManager
 
 class GroceryShareApp:
     def __init__(self):
         """Initialize the application with database manager"""
-        self.db = DatabaseManager()
+        self.db = DatabaseManager("friends.db")
+        
+    def main():
+        db = DatabaseManager("friends.db")
+
+        db.conn.execute("INSERT OR IGNORE INTO friends (user1, user2) VALUES ('user1', 'friend1')")
+        db.conn.commit()
+
+        print("Before removing:", db.conn.execute("SELECT * FROM friends").fetchall())
+
+        db.remove_friend("user1", "friend1")
+        print("After removing:", db.conn.execute("SELECT * FROM friends").fetchall())
+
+        db.close_connection()
+
+    if __name__ == "__main__":
+        main()
+        
         
     def apply_custom_styling(self):
         st.markdown("""
@@ -180,7 +198,8 @@ class GroceryShareApp:
             if st.button('Add Item', use_container_width=True):
                 if item and quantity > 0:
                     self.db.add_grocery_item(st.session_state.username, item, quantity, unit)
-                    st.success(f'Added {quantity} {unit} of {item} to your list')
+                    st.success(f'Added {round(quantity, 1)} {unit} of {item} to your list')
+                    #write to file to remember
                 else:
                     st.warning('Please enter a valid item and quantity')
                     
@@ -273,6 +292,30 @@ class GroceryShareApp:
         """, unsafe_allow_html=True)
 
     def render_friends_page(self):
+        
+        st.markdown("""
+            <style>
+            input, button {
+                border: 2px solid #F39C12 !important;
+                outline: none !important;
+                background-color: #262626; 
+                color: white; 
+                border-radius: 5px; 
+            }
+            input:focus {
+                border: 2px solid #F39C12 !important; 
+            }
+            input.valid {
+                border: 2px solid green !important;
+            }
+            input.invalid {
+                border: 2px solid red !important; 
+            }
+            button:hover {
+                background-color: #F39C12; 
+                color: black; 
+            </style>
+        """, unsafe_allow_html=True)
         st.header('🤝 Friends Management')
         
         # Styled friend addition section
@@ -307,9 +350,10 @@ class GroceryShareApp:
         # Friends List with Card-like Display
         st.subheader('Your Friends')
         friends = self.db.get_friends(st.session_state.username)
-        
+    
         if friends:
             for friend in friends:
+                
                 st.markdown(f"""
                 <div style='background-color: #3a3a3a; 
                             padding: 10px; 
@@ -328,8 +372,22 @@ class GroceryShareApp:
                     </button>
                 </div>
                 """, unsafe_allow_html=True)
+            for index, friend in enumerate(friends):
+                col1, col2 = st.columns([4, 1])
+                with col1:
+                    st.write(f"👤 {friend}") 
+                with col2:
+                    if st.button(f"❌ Remove {friend}", key=f"remove_{index}_{friend}"):
+                        self.db.remove_friend(st.session_state.username, friend)
+                        st.success(f"{friend} has been removed.")
+                        try:
+                            st.rerun()
+                        except AttributeError:
+
+                            st.session_state.page = st.session_state.page
         else:
-            st.info('No friends added yet. Start connecting!')
+            st.info("You have no friends added yet. Start connecting!")
+            
 
     def render_matches_page(self):
         st.header('🤝 Grocery Matches')
