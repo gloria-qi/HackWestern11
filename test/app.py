@@ -207,7 +207,7 @@ class GroceryShareApp:
                 grocery_items = self.db.get_grocery_items(st.session_state.username)
 
         # Add "Scan Receipt" button
-        if st.button("Scan Receipt"):
+        if st.button("Scan Receipt", use_container_width=True):
             self.scan_receipt()
 
         st.header('Your Grocery List')
