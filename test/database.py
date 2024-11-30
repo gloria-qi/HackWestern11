@@ -7,6 +7,7 @@ class DatabaseManager:
         try:
             self.conn = sqlite3.connect(db_path, check_same_thread=False)
             self.create_tables()
+            self.cursor = self.conn.cursor()
         except Exception as e:
             print(e)
             self.connection = None
@@ -138,3 +139,7 @@ class DatabaseManager:
         cursor.execute(query, (username, friend_username))
         self.conn.commit()
         return True
+    def get_grocery_items(self, username):
+        query = "SELECT item, quantity, unit FROM grocery_lists WHERE username = ?"
+        self.cursor.execute(query, (username,))
+        return self.cursor.fetchall()

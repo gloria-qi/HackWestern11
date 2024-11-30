@@ -202,6 +202,30 @@ class GroceryShareApp:
                     #write to file to remember
                 else:
                     st.warning('Please enter a valid item and quantity')
+                st.header('Your Grocery List')
+                grocery_items = self.db.get_grocery_items(st.session_state.username)
+
+        st.header('Your Grocery List')
+        grocery_items = self.db.get_grocery_items(st.session_state.username) 
+        if grocery_items:
+            st.write("Here are the items you’ve added:")
+            for index, (item, quantity, unit) in enumerate(grocery_items):
+                col1, col2, col3, col4 = st.columns([2, 2, 1, 1])
+                with col1:
+                    st.write(f"**{item}**")
+                with col2:
+                    st.write(f"{quantity} {unit}")
+                with col3:
+                    #Need to work on this
+                    if st.button(f"📝 Edit", key=f"edit_{index}"):
+                        st.warning("Edit functionality not implemented yet!")  
+                with col4:
+                    if st.button(f"❌ Remove", key=f"remove_{index}"):
+                        self.db.remove_grocery_item(st.session_state.username, item)  
+                        st.success(f"Removed {item} from your grocery list.")
+                        st.experimental_rerun() 
+        else:
+            st.info("No items in your grocery list. Start adding some!")
                     
     def render_dashboard(self):
         st.markdown("""
@@ -291,8 +315,7 @@ class GroceryShareApp:
         </div>
         """, unsafe_allow_html=True)
 
-    def render_friends_page(self):
-        
+    def render_friends_page(self):   
         st.markdown("""
             <style>
             input, button {
