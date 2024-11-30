@@ -3,7 +3,6 @@ import sqlite3
 import hashlib
 from typing import List, Dict
 
-
 class GroceryShareApp:
     def __init__(self):
         # Initialize database connection
@@ -156,7 +155,8 @@ class GroceryShareApp:
                     st.session_state.logged_in = True
                     st.session_state.username = username
                     st.session_state.page = 'dashboard'
-                    st.experimental_rerun()
+                    st.success(f'Welcome, {username}!')
+                    # No need to rerun, just update session state to trigger re-render
                 else:
                     st.error('Invalid credentials')
 
@@ -172,7 +172,7 @@ class GroceryShareApp:
                 elif self.register_user(new_username, new_password, email):
                     st.success('Registration successful! Please login.')
                     st.session_state.page = 'login'
-                    st.experimental_rerun()
+                    # No need to rerun, just update session state to trigger re-render
                 else:
                     st.error('Username or email already exists')
 
@@ -195,6 +195,7 @@ class GroceryShareApp:
             st.session_state.logged_in = False
             st.session_state.username = None
             st.session_state.page = 'login'
+            # No need to rerun, just update session state to trigger re-render
             st.experimental_rerun()
 
     def render_grocery_list_page(self):
