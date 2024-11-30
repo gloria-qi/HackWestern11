@@ -3,6 +3,8 @@ import sqlite3
 import hashlib
 from typing import List, Dict
 
+print("W")
+
 class GroceryShareApp:
     def __init__(self):
         # Initialize database connection
