@@ -370,32 +370,38 @@ class GroceryShareApp:
                 self.scan_receipt()
 
     def scan_receipt(self):
+        """Launch the camera for scanning a receipt and display it in Streamlit."""
         # Initialize the camera
         cam = cv2.VideoCapture(0)
         if not cam.isOpened():
             st.error("Error: Could not access the camera.")
             return
 
-        # Set camera properties
         cam.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
         cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
-        st.info("Press 'q' in the camera window to close.")
+        # Create a placeholder for the camera feed
+        frame_placeholder = st.empty()
 
-        # Display the camera feed
+        st.info("Press 'q' on your keyboard to stop the camera.")
+
         while True:
             success, frame = cam.read()
             if not success:
                 st.warning("Warning: Failed to capture frame. Retrying...")
                 continue
 
-            # Show the frame in a window
-            cv2.imshow("Scan Receipt - Press 'q' to exit", frame)
+            # Convert the frame to RGB (Streamlit expects RGB images)
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-            # Exit the loop when 'q' is pressed
+            # Display the frame in Streamlit
+            frame_placeholder.image(frame_rgb, caption="Scan Receipt - Press 'q' to stop", use_container_width=True)
+
+            # Check for 'q' key press to exit
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
         # Release resources
         cam.release()
         cv2.destroyAllWindows()
+        frame_placeholder.empty()  # Clear the placeholder when done
