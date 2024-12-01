@@ -263,3 +263,70 @@ class DatabaseManager:
         
         return cursor.fetchall()
 
+
+    def find_matching_items(self, username1, username2):
+        """
+        Find grocery items that both users want, including quantities and units.
+        """
+        query = """
+            SELECT 
+                g1.item, 
+                g1.quantity AS user1_quantity, 
+                g2.quantity AS user2_quantity, 
+                g1.unit
+            FROM grocery_lists g1
+            INNER JOIN grocery_lists g2 
+                ON g1.item = g2.item AND g1.unit = g2.unit
+            WHERE g1.username = ? AND g2.username = ?
+        """
+        if not self.cursor:
+            raise ValueError("Database cursor is not initialized. Check your database connection.")
+
+        self.cursor.execute(query, (username1, username2))
+        matches = self.cursor.fetchall()
+
+        return [
+            {"item": row[0], "user1_quantity": row[1], "user2_quantity": row[2], "unit": row[3]}
+            for row in matches
+        ]
+
+    def get_ongoing_purchases(self, username):
+            """
+            Retrieve ongoing purchases involving the user where a friend is buying.
+            
+            Returns a list of tuples: [(buyer, item), ...]
+            """
+            cursor = self.conn.cursor()
+            
+            # Find purchases where the user is involved and a buyer is selected
+            cursor.execute('''
+                SELECT buyer, item
+                FROM purchase_tracking
+                WHERE (user1 = ? OR user2 = ?) AND 
+                    buyer IS NOT NULL AND 
+                    buyer != ? AND 
+                    is_purchased = 0
+            ''', (username, username, username))
+            
+            return cursor.fetchall()
+            
+    def get_tracked_purchase_items(self, username):
+            """
+            Retrieve items that are currently being tracked for purchase by the user.
+            
+            Args:
+                username (str): Username to check for tracked purchases
+            
+            Returns:
+                List[str]: List of items being purchased
+            """
+            cursor = self.conn.cursor()
+            
+            # Find items where the user is the buyer and purchase is not completed
+            cursor.execute('''
+                SELECT DISTINCT item
+                FROM purchase_tracking
+                WHERE buyer = ? AND is_purchased = 0
+            ''', (username,))
+            
+            return [item[0] for item in cursor.fetchall()]

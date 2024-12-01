@@ -228,138 +228,227 @@ class GroceryShareApp:
         else:
             st.info("No items in your grocery list. Start adding some!")
 
-    def render_friends_page(self):
-        st.markdown("""
-            <style>
-            input, button {
-                border: 2px solid #F39C12 !important;
-                outline: none !important;
-                background-color: #262626; 
-                color: white; 
-                border-radius: 5px; 
-            }
-            input:focus {
-                border: 2px solid #F39C12 !important; 
-            }
-            input.valid {
-                border: 2px solid green !important;
-            }
-            input.invalid {
-                border: 2px solid red !important; 
-            }
-            button:hover {
-                background-color: #F39C12; 
-                color: black; 
-            }
-            </style>
-        """, unsafe_allow_html=True)
-        
-        st.header('🤝 Friends Management')
-        
-        # Styled friend addition section
-        st.markdown("""
-        <div style='background-color: #262626; 
-                    padding: 15px; 
-                    border-radius: 10px; 
-                    margin-bottom: 20px;'>
-            <h4 style='color: #F39C12; text-align: center;'>
-                Add New Friends
-            </h4>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        friend_username = st.text_input('Enter Friend\'s Username', placeholder="Username to add")
-        
-        col_space, col_button, col_space2 = st.columns([1, 2, 1])
-        
-        with col_button:
-            if st.button('Add Friend', use_container_width=True):
-                if not friend_username:
-                    st.warning('Please enter a username')
-                elif friend_username == st.session_state.username:
-                    st.error('You cannot add yourself as a friend')
-                else:
-                    if self.db.add_friend(st.session_state.username, friend_username):
-                        st.success(f'{friend_username} added to your friends')
-                        # Use rerun logic to refresh the page and show changes
-                        st.session_state.page = 'friends'
-                        st.experimental_rerun()
-                    else:
-                        st.error('Could not add friend. Check the username exists.')
-
-        # Friends List with Card-like Display
-        st.subheader('Your Friends')
-        friends = self.db.get_friends(st.session_state.username)
-
-        if friends:
-            for friend in friends:
-                # Create card-like display for each friend
-                st.markdown(f"""
-                <div style='background-color: #3a3a3a; 
-                            padding: 10px; 
-                            border-radius: 8px; 
-                            margin-bottom: 10px;
-                            display: flex;
-                            justify-content: space-between;
-                            align-items: center;'>
-                    <span>{friend}</span>
-                    <button style='background-color: #F39C12; 
-                                    color: black; 
-                                    border: none; 
-                                    padding: 5px 10px; 
-                                    border-radius: 5px;'>
-                        View Profile
-                    </button>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            for index, friend in enumerate(friends):
-                col1, col2 = st.columns([4, 1])
-                with col1:
-                    st.write(f"👤 {friend}") 
-                with col2:
-                    if st.button(f"❌ Remove {friend}", key=f"remove_{index}_{friend}"):
-                        self.db.remove_friend(st.session_state.username, friend)
-                        st.success(f"{friend} has been removed.")
-                        # Refresh page and show updated list
-                        st.session_state.page = 'friends'
-                        st.experimental_rerun()
-        else:
-            st.info("You have no friends added yet. Start connecting!")
-
 
     def render_matches_page(self):
-        st.header('🔗 Grocery Matches with Friends')
-        
+        st.header("🔗 Grocery Matches, Cost Splitting, and Purchases")
+
         # Fetch the user's grocery items
         user_grocery_items = self.db.get_grocery_items(st.session_state.username)
-        
+
         if not user_grocery_items:
             st.info("You have no items in your grocery list to match with friends.")
             return
-        
+
+        # Check if there are any ongoing purchases involving the user
+        ongoing_purchases = self.db.get_ongoing_purchases(st.session_state.username)
+        if ongoing_purchases:
+            st.warning("⚠️ Purchase Updates:")
+            for purchase in ongoing_purchases:
+                st.write(f"🛒 {purchase[0]} is purchasing {purchase[1]} for the group!")
+
         # Show the user's grocery items
         st.subheader('Your Grocery Items')
         for item, quantity, unit in user_grocery_items:
             st.write(f"{item} - {round(quantity, 1)} {unit}")
-        
-        # Fetch friends' grocery items and compare
+
+        # Fetch friends and compare grocery lists
         matches_found = False
         friends = self.db.get_friends(st.session_state.username)
-        
-        if friends:
-            st.subheader('Matching Grocery Items with Your Friends')
-            for friend in friends:
-                friend_items = self.db.get_grocery_items(friend)
-                
-                for item, quantity, unit in user_grocery_items:
-                    # Check if the friend has the same item
-                    for friend_item, friend_quantity, friend_unit in friend_items:
-                        if item == friend_item and unit == friend_unit:
-                            matches_found = True
-                            st.write(f"🟢 Match with {friend}: {item} - You need {round(quantity, 1)} {unit}, {friend} needs {round(friend_quantity, 1)} {unit}")
-                    
+
+        if not friends:
+            st.info("You have no friends to compare with.")
+            return
+
+        # Get already tracked purchase items
+        tracked_purchase_items = self.db.get_tracked_purchase_items(st.session_state.username)
+
+        # Loop over each friend
+        for friend in friends:
+            # Find matches for the current friend
+            matches = self.db.find_matching_items(st.session_state.username, friend)
+
+            if not matches:
+                st.info(f"No matches found with {friend}.")
+                continue
+
+            st.subheader(f"Matches with {friend}")
+
+            total_user_cost = 0.0  # Total cost for the user
+            total_friend_cost = 0.0  # Total cost for the friend
+
+            # Loop through each matching item
+            for match in matches:
+                item = match['item']
+                user_quantity = match['user1_quantity']
+                friend_quantity = match['user2_quantity']
+                unit = match['unit']
+
+                matches_found = True
+
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    st.write(f"🟢 Match with {friend}: {item} - You need {round(user_quantity, 1)} {unit}, {friend} needs {round(friend_quantity, 1)} {unit}")
+                with col2:
+                    # Disable button if item is already being tracked for purchase
+                    if item in tracked_purchase_items:
+                        st.markdown(f"**You're buying {item}**")
+                    else:
+                        if st.button(f"I'll Buy - {item}", key=f"purchase_{item}_{friend}"):
+                            self.db.track_matched_item_purchase(item, st.session_state.username, friend, st.session_state.username)
+                            st.success(f"You're buying {item} for the group!")
+                            st.experimental_rerun()
+
+                # Input the cost per unit for the item
+                cost_per_unit = st.number_input(
+                    f"Enter cost per {unit} for {item}",
+                    min_value=0.0,
+                    step=0.01,
+                    format="%.2f",
+                    key=f"cost_{item}_{friend}"
+                )
+
+                if cost_per_unit > 0:
+                    # Calculate total and split costs
+                    total_quantity = user_quantity + friend_quantity
+                    total_cost = total_quantity * cost_per_unit
+                    user_cost = (user_quantity / total_quantity) * total_cost
+                    friend_cost = (friend_quantity / total_quantity) * total_cost
+
+                    # Add to the total costs
+                    total_user_cost += user_cost
+                    total_friend_cost += friend_cost
+
+                    # Display cost breakdown
+                    st.markdown(f"""
+                    <div style='background-color: #f5f5f5; 
+                                padding: 10px; 
+                                border-radius: 8px; 
+                                margin-bottom: 10px; color: black;'>
+                        <b>Item:</b> {item} <br>
+                        <b>Your Quantity:</b> {round(user_quantity, 1)} {unit} <br>
+                        <b>{friend}'s Quantity:</b> {round(friend_quantity, 1)} {unit} <br>
+                        <b>Total Cost:</b> ${total_cost:.2f} <br>
+                        <b>Your Share:</b> ${user_cost:.2f} <br>
+                        <b>{friend}'s Share:</b> ${friend_cost:.2f}
+                    </div>
+                    """, unsafe_allow_html=True)
+
+            # Display the total cost for this friend
+            st.markdown(f"""
+            <div style='background-color: #262626; 
+                        padding: 15px; 
+                        border-radius: 8px; 
+                        margin-top: 20px; 
+                        color: white;'>
+                <b>Total Cost with {friend}:</b> <br>
+                <b>Your Total Share:</b> ${total_user_cost:.2f} <br>
+                <b>{friend}'s Total Share:</b> ${total_friend_cost:.2f}
+            </div>
+            """, unsafe_allow_html=True)
+
         if not matches_found:
             st.info("No matches found with your friends' grocery lists.")
         else:
-            st.write("These are the matches based on your grocery lists. You can now reach out to your friends and plan together.")
+            st.write("These are the matches based on your grocery lists. You can now coordinate purchases with your friends.")
+
+
+    def render_friends_page(self):
+            st.markdown("""
+                <style>
+                input, button {
+                    border: 2px solid #F39C12 !important;
+                    outline: none !important;
+                    background-color: #262626; 
+                    color: white; 
+                    border-radius: 5px; 
+                }
+                input:focus {
+                    border: 2px solid #F39C12 !important; 
+                }
+                input.valid {
+                    border: 2px solid green !important;
+                }
+                input.invalid {
+                    border: 2px solid red !important; 
+                }
+                button:hover {
+                    background-color: #F39C12; 
+                    color: black; 
+                }
+                </style>
+            """, unsafe_allow_html=True)
+            
+            st.header('🤝 Friends Management')
+            
+            # Styled friend addition section
+            st.markdown("""
+            <div style='background-color: #262626; 
+                        padding: 15px; 
+                        border-radius: 10px; 
+                        margin-bottom: 20px;'>
+                <h4 style='color: #F39C12; text-align: center;'>
+                    Add New Friends
+                </h4>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            friend_username = st.text_input('Enter Friend\'s Username', placeholder="Username to add")
+            
+            col_space, col_button, col_space2 = st.columns([1, 2, 1])
+            
+            with col_button:
+                if st.button('Add Friend', use_container_width=True):
+                    if not friend_username:
+                        st.warning('Please enter a username')
+                    elif friend_username == st.session_state.username:
+                        st.error('You cannot add yourself as a friend')
+                    else:
+                        result = self.db.add_friend(st.session_state.username, friend_username)
+                        if result:
+                            st.success(f'{friend_username} added to your friends')
+                            st.session_state.page = 'friends'
+                            st.rerun()
+                        else:
+                            # Provide more specific error messages
+                            st.error(f'Unable to add {friend_username}. Check if the username exists or is already your friend.')
+
+
+            # Friends List with Card-like Display
+            st.subheader('Your Friends')
+            friends = self.db.get_friends(st.session_state.username)
+
+            if friends:
+                for friend in friends:
+                    # Create card-like display for each friend
+                    st.markdown(f"""
+                    <div style='background-color: #3a3a3a; 
+                                padding: 10px; 
+                                border-radius: 8px; 
+                                margin-bottom: 10px;
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: center;'>
+                        <span>{friend}</span>
+                        <button style='background-color: #F39C12; 
+                                        color: black; 
+                                        border: none; 
+                                        padding: 5px 10px; 
+                                        border-radius: 5px;'>
+                            View Profile
+                        </button>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                for index, friend in enumerate(friends):
+                    col1, col2 = st.columns([4, 1])
+                    with col1:
+                        st.write(f"👤 {friend}") 
+                    with col2:
+                        if st.button(f"❌ Remove {friend}", key=f"remove_{index}_{friend}"):
+                            self.db.remove_friend(st.session_state.username, friend)
+                            st.success(f"{friend} has been removed.")
+                            # Refresh page and show updated list
+                            st.session_state.page = 'friends'
+                            st.experimental_rerun()
+            else:
+                st.info("You have no friends added yet. Start connecting!")
