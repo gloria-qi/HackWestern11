@@ -1,6 +1,7 @@
 import streamlit as st
 from models import User
 from database import DatabaseManager
+import cv2
 
 
 class GroceryShareApp:
@@ -350,6 +351,9 @@ class GroceryShareApp:
             st.info("No matches found with your friends' grocery lists.")
         else:
             st.write("These are the matches based on your grocery lists. You can now coordinate purchases with your friends.")
+            # Add "Scan Receipt" button
+            if st.button("Scan Receipt"):
+                self.scan_receipt()
 
 
     def render_friends_page(self):
@@ -452,3 +456,34 @@ class GroceryShareApp:
                             st.experimental_rerun()
             else:
                 st.info("You have no friends added yet. Start connecting!")
+
+    def scan_receipt(self):
+        # Initialize the camera
+        cam = cv2.VideoCapture(0)
+        if not cam.isOpened():
+            st.error("Error: Could not access the camera.")
+            return
+
+        # Set camera properties
+        cam.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+
+        st.info("Press 'q' in the camera window to close.")
+
+        # Display the camera feed
+        while True:
+            success, frame = cam.read()
+            if not success:
+                st.warning("Warning: Failed to capture frame. Retrying...")
+                continue
+
+            # Show the frame in a window
+            cv2.imshow("Scan Receipt - Press 'q' to exit", frame)
+
+            # Exit the loop when 'q' is pressed
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+        # Release resources
+        cam.release()
+        cv2.destroyAllWindows()
