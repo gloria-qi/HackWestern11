@@ -279,13 +279,15 @@ class GroceryShareApp:
                 elif friend_username == st.session_state.username:
                     st.error('You cannot add yourself as a friend')
                 else:
-                    if self.db.add_friend(st.session_state.username, friend_username):
+                    result = self.db.add_friend(st.session_state.username, friend_username)
+                    if result:
                         st.success(f'{friend_username} added to your friends')
-                        # Use rerun logic to refresh the page and show changes
                         st.session_state.page = 'friends'
-                        st.experimental_rerun()
+                        st.rerun()
                     else:
-                        st.error('Could not add friend. Check the username exists.')
+                        # Provide more specific error messages
+                        st.error(f'Unable to add {friend_username}. Check if the username exists or is already your friend.')
+
 
         # Friends List with Card-like Display
         st.subheader('Your Friends')
@@ -338,6 +340,13 @@ class GroceryShareApp:
             st.info("You have no items in your grocery list to match with friends.")
             return
         
+        # Check if there are any ongoing purchases involving the user
+        ongoing_purchases = self.db.get_ongoing_purchases(st.session_state.username)
+        if ongoing_purchases:
+            st.warning("⚠️ Purchase Updates:")
+            for purchase in ongoing_purchases:
+                st.write(f"🛒 {purchase[0]} is purchasing {purchase[1]} for the group!")
+        
         # Show the user's grocery items
         st.subheader('Your Grocery Items')
         for item, quantity, unit in user_grocery_items:
@@ -346,6 +355,9 @@ class GroceryShareApp:
         # Fetch friends' grocery items and compare
         matches_found = False
         friends = self.db.get_friends(st.session_state.username)
+        
+        # Get already tracked purchase items
+        tracked_purchase_items = self.db.get_tracked_purchase_items(st.session_state.username)
         
         if friends:
             st.subheader('Matching Grocery Items with Your Friends')
@@ -357,9 +369,25 @@ class GroceryShareApp:
                     for friend_item, friend_quantity, friend_unit in friend_items:
                         if item == friend_item and unit == friend_unit:
                             matches_found = True
-                            st.write(f"🟢 Match with {friend}: {item} - You need {round(quantity, 1)} {unit}, {friend} needs {round(friend_quantity, 1)} {unit}")
-                    
-        if not matches_found:
-            st.info("No matches found with your friends' grocery lists.")
-        else:
-            st.write("These are the matches based on your grocery lists. You can now reach out to your friends and plan together.")
+                            col1, col2 = st.columns([3, 1])
+                            with col1:
+                                st.write(f"🟢 Match with {friend}: {item} - You need {round(quantity, 1)} {unit}, {friend} needs {round(friend_quantity, 1)} {unit}")
+                            with col2:
+                                # Disable button if item is already being tracked for purchase
+                                if item in tracked_purchase_items:
+                                    st.markdown(f"**You're buying {item}**")
+                                else:
+                                    if st.button(f"I'll Buy - {item}", key=f"purchase_{item}_{friend}"):
+                                        match_id = self.db.track_matched_item_purchase(
+                                            item, 
+                                            st.session_state.username, 
+                                            friend, 
+                                            st.session_state.username
+                                        )
+                                        st.success(f"You're buying {item} for the group!")
+                                        st.rerun()
+            
+            if not matches_found:
+                st.info("No matches found with your friends' grocery lists.")
+            else:
+                st.write("These are the matches based on your grocery lists. You can now coordinate purchases with your friends.")

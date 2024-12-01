@@ -263,3 +263,42 @@ class DatabaseManager:
         
         return cursor.fetchall()
 
+    def get_ongoing_purchases(self, username):
+        """
+        Retrieve ongoing purchases involving the user where a friend is buying.
+        
+        Returns a list of tuples: [(buyer, item), ...]
+        """
+        cursor = self.conn.cursor()
+        
+        # Find purchases where the user is involved and a buyer is selected
+        cursor.execute('''
+            SELECT buyer, item
+            FROM purchase_tracking
+            WHERE (user1 = ? OR user2 = ?) AND 
+                buyer IS NOT NULL AND 
+                buyer != ? AND 
+                is_purchased = 0
+        ''', (username, username, username))
+        
+        return cursor.fetchall()
+    def get_tracked_purchase_items(self, username):
+        """
+        Retrieve items that are currently being tracked for purchase by the user.
+        
+        Args:
+            username (str): Username to check for tracked purchases
+        
+        Returns:
+            List[str]: List of items being purchased
+        """
+        cursor = self.conn.cursor()
+        
+        # Find items where the user is the buyer and purchase is not completed
+        cursor.execute('''
+            SELECT DISTINCT item
+            FROM purchase_tracking
+            WHERE buyer = ? AND is_purchased = 0
+        ''', (username,))
+        
+        return [item[0] for item in cursor.fetchall()]
