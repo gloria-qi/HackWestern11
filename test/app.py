@@ -54,7 +54,7 @@ class GroceryShareApp:
         """, unsafe_allow_html=True)
         
     def run(self):
-        st.set_page_config(page_title="GroceryShare", page_icon="🛒")
+        st.set_page_config(page_title="PantryPal", page_icon="🛒")
         if 'page' not in st.session_state:
             st.session_state.page = 'login'
         if 'logged_in' not in st.session_state:
@@ -69,7 +69,7 @@ class GroceryShareApp:
 
     def render_login_page(self):
         self.apply_custom_styling()
-        st.markdown("<h1 style='text-align: center;'>Welcome to GroceryShare 🛒</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align: center;'>Welcome to PantryPal 🛒</h1>", unsafe_allow_html=True)
     
         auth_mode = st.radio('Choose Action', ['Login', 'Register'])
         
@@ -169,7 +169,7 @@ class GroceryShareApp:
 
         if st.sidebar.button('🚪 Logout', 
                             use_container_width=True, 
-                            help='Exit your GroceryShare session'):
+                            help='Exit your PantryPal session'):
             st.session_state.logged_in = False
             st.session_state.username = None
             st.session_state.page = 'login'
